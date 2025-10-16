@@ -429,8 +429,11 @@ def handle_command():
 def home():
     return "Slackbot is running!", 200
 
+
 # ---------------------------
 # Run Flask App
 # ---------------------------
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    # Get port from environment or default to 5000 (good for local testing)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=False, port=port) # <--- Uses the dynamic PORT variable
