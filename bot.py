@@ -17,6 +17,7 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
 from dotenv import load_dotenv
 import base64
+import textwrap
 
 # ---------------------------
 # Load environment variables
@@ -188,54 +189,50 @@ def generate_post_idea_llm(cluster_keywords, outline_summary):
 def generate_pdf(cluster_summaries, report_name="keyword_report.pdf"):
     c = canvas.Canvas(report_name, pagesize=letter)
     width, height = letter
-    y = height - 50
+    margin = 50
+    y = height - margin
+    line_height = 14
+    wrap_width = 80  # Approx characters per line
+
+    def draw_wrapped_text(text, x, y, font="Helvetica", font_size=10):
+        c.setFont(font, font_size)
+        lines = textwrap.wrap(text, width=wrap_width)
+        for line in lines:
+            if y < margin:
+                c.showPage()
+                y = height - margin
+            c.drawString(x, y, line)
+            y -= line_height
+        return y
+
     c.setFont("Helvetica-Bold", 16)
-    c.drawString(50, y, "Keyword Clustering Report")
+    c.drawString(margin, y, "Keyword Clustering Report")
     y -= 25
     c.setFont("Helvetica", 10)
-    c.drawString(50, y, f"Total Clusters: {len(cluster_summaries)}")
-    y -= 30
-    c.setFont("Helvetica", 12)
-    
+    y = draw_wrapped_text(f"Total Clusters: {len(cluster_summaries)}", margin, y)
+
     for cluster_id, info in cluster_summaries.items():
-        if y < 100:
+        if y < margin + 100:
             c.showPage()
-            y = height - 50
-            c.setFont("Helvetica", 12)
+            y = height - margin
+        
+        y = draw_wrapped_text(f"Cluster {cluster_id + 1} ({len(info['keywords'])} Keywords)", margin, y, font="Helvetica-Bold", font_size=12)
         
         kws = ', '.join(info["keywords"][:10]) + ('...' if len(info["keywords"]) > 10 else '')
+        y = draw_wrapped_text(f"Keywords: {kws}", margin + 10, y)
+        y = draw_wrapped_text(f"Top Web URL: {info.get('top_url', 'N/A')}", margin + 10, y)
         
-        c.setFont("Helvetica-Bold", 12)
-        c.drawString(50, y, f"Cluster {cluster_id + 1} ({len(info['keywords'])} Keywords)")
-        y -= 15
-        
-        c.setFont("Helvetica", 10)
-        c.drawString(60, y, f"Keywords: {kws}")
-        y -= 15
-        c.drawString(60, y, f"Top Web URL: {info.get('top_url', 'N/A')}")
-        y -= 15
-        
-        c.setFont("Helvetica-Bold", 10)
-        c.drawString(60, y, "Suggested Post Idea:")
-        c.setFont("Helvetica", 10)
-        y -= 15
-        c.drawString(70, y, f"* {info['post_idea']}")
-        y -= 15
+        y = draw_wrapped_text("Suggested Post Idea:", margin + 10, y, font="Helvetica-Bold", font_size=10)
+        y = draw_wrapped_text(f"* {info['post_idea']}", margin + 20, y)
 
-        c.setFont("Helvetica-Bold", 10)
-        c.drawString(60, y, "Summary Outline:")
-        y -= 15
-        
-        c.setFont("Helvetica", 10)
+        y = draw_wrapped_text("Summary Outline:", margin + 10, y, font="Helvetica-Bold", font_size=10)
         for o in info["outline"]:
-            c.drawString(70, y, f"- {o.replace('**', '')}")
-            y -= 15
-        y -= 10
+            y = draw_wrapped_text(f"- {o.replace('**','')}", margin + 20, y)
         
+        y -= 10  # extra space between clusters
+
     c.save()
     return report_name
-
-
 # ---------------------------
 # Email Report (Implemented)
 # ---------------------------
